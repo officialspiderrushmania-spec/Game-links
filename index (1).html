@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neon City Background</title>
+<style>
+  /* =========================================================
+     THEME TOKENS  (colors taken from the reference image)
+     ========================================================= */
+  :root {
+    --void:      #05060f;   /* deepest night sky */
+    --midnight:  #0a0b22;   /* mid sky */
+    --ember:     #1c0512;   /* red-tinted horizon */
+    --neon-red:  #ff2a3d;
+    --crimson:   #b3001b;
+    --neon-cyan: #21d4ff;
+    --violet:    #7a3cff;
+    --window-warm: #ffd9a0;
+  }
+
+  /* =========================================================
+     BACKGROUND  (drop everything from here to the marker
+     "END BACKGROUND" into your own site to reuse it)
+     ========================================================= */
+  html, body { height: 100%; margin: 0; }
+
+  body {
+    background: linear-gradient(180deg, var(--void) 0%, var(--midnight) 55%, var(--ember) 100%);
+    background-color: var(--void);
+    color: #fff;
+    overflow-x: hidden;
+  }
+
+  .neon-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  /* colored light spilling across the sky */
+  .neon-bg .glow {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(60% 45% at 8% 100%,  rgba(255, 42, 61, .38), transparent 70%),
+      radial-gradient(55% 40% at 95% 8%,   rgba(33, 212, 255, .26), transparent 70%),
+      radial-gradient(50% 40% at 55% 62%,  rgba(122, 60, 255, .22), transparent 72%),
+      radial-gradient(45% 30% at 100% 100%, rgba(255, 42, 61, .22), transparent 70%);
+    animation: breathe 9s ease-in-out infinite alternate;
+  }
+
+  /* diagonal brush-slash light streaks */
+  .neon-bg .streak {
+    position: absolute;
+    height: 3px;
+    width: 46vw;
+    transform: rotate(-24deg);
+    filter: blur(1px);
+    opacity: .55;
+  }
+  .neon-bg .streak.s1 { top: 18%; left: -6vw;  background: linear-gradient(90deg, transparent, var(--neon-red), transparent); }
+  .neon-bg .streak.s2 { top: 34%; right: -10vw; background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent); width: 38vw; opacity: .4; }
+  .neon-bg .streak.s3 { top: 62%; left: 20vw;  background: linear-gradient(90deg, transparent, var(--violet), transparent); width: 30vw; opacity: .35; }
+
+  /* skyline layers (filled by script below) */
+  .neon-bg svg.skyline {
+    position: absolute;
+    left: 0; bottom: 0;
+    width: 100%; height: 78%;
+  }
+  .neon-bg svg.skyline.far  { opacity: .55; filter: blur(.6px); }
+  .neon-bg svg.skyline.near { filter: drop-shadow(0 0 14px rgba(255, 42, 61, .25)); }
+
+  /* web in the top corners */
+  .neon-bg svg.web {
+    position: absolute;
+    top: 0;
+    width: min(38vw, 340px);
+    height: auto;
+    opacity: .55;
+  }
+  .neon-bg svg.web.left  { left: 0; }
+  .neon-bg svg.web.right { right: 0; transform: scaleX(-1); }
+
+  /* glowing horizon line + edge vignette */
+  .neon-bg .horizon {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--neon-red), var(--violet), var(--neon-cyan));
+    box-shadow: 0 0 22px 4px rgba(255, 42, 61, .55), 0 0 40px 8px rgba(33, 212, 255, .25);
+  }
+  .neon-bg .vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 100% at 50% 40%, transparent 55%, rgba(0, 0, 0, .65) 100%);
+  }
+
+  @keyframes breathe {
+    from { opacity: .82; }
+    to   { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .neon-bg .glow { animation: none; }
+  }
+  /* =============== END BACKGROUND (CSS) =============== */
+
+  /* Your page content goes inside <main>. It sits above the background. */
+  main { position: relative; z-index: 1; min-height: 100%; }
+</style>
+</head>
+<body>
+
+<!-- BACKGROUND MARKUP -->
+<div class="neon-bg" aria-hidden="true">
+  <div class="glow"></div>
+  <div class="streak s1"></div>
+  <div class="streak s2"></div>
+  <div class="streak s3"></div>
+  <svg class="skyline far"  id="skylineFar"  viewBox="0 0 1600 600" preserveAspectRatio="xMidYMax slice"></svg>
+  <svg class="skyline near" id="skylineNear" viewBox="0 0 1600 600" preserveAspectRatio="xMidYMax slice"></svg>
+  <svg class="web left"  id="webLeft"  viewBox="0 0 300 300"></svg>
+  <svg class="web right" id="webRight" viewBox="0 0 300 300"></svg>
+  <div class="horizon"></div>
+  <div class="vignette"></div>
+</div>
+
+<main>
+  <!-- Put your site content here -->
+</main>
+
+<script>
+/* BACKGROUND SCRIPT: draws the skyline and web corners.
+   Uses a seeded random so the city looks the same on every load. */
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var seed = 7;
+  function rnd() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  function el(name, attrs, parent) {
+    var n = document.createElementNS(NS, name);
+    for (var k in attrs) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+
+  function skyline(svg, opts) {
+    var x = -20;
+    while (x < 1620) {
+      var w = opts.minW + rnd() * (opts.maxW - opts.minW);
+      var h = opts.minH + rnd() * (opts.maxH - opts.minH);
+      var y = 600 - h;
+      var g = el('g', {}, svg);
+      el('rect', { x: x, y: y, width: w, height: h, fill: opts.body }, g);
+      // neon edge on one side of each tower
+      var edge = rnd() > 0.5 ? opts.edgeA : opts.edgeB;
+      el('rect', { x: x, y: y, width: 1.6, height: h, fill: edge, opacity: opts.edgeOpacity }, g);
+      el('rect', { x: x, y: y, width: w, height: 1.6, fill: edge, opacity: opts.edgeOpacity * .8 }, g);
+      // antenna on some towers
+      if (rnd() > 0.72) {
+        el('rect', { x: x + w / 2 - 1, y: y - 26, width: 2, height: 26, fill: opts.body }, g);
+        el('circle', { cx: x + w / 2, cy: y - 28, r: 2.4, fill: '#ff2a3d' }, g);
+      }
+      // lit windows
+      var cols = Math.floor((w - 8) / 9), rows = Math.floor((h - 12) / 12);
+      for (var c = 0; c < cols; c++) {
+        for (var r = 0; r < rows; r++) {
+          if (rnd() < opts.lit) {
+            var pick = rnd();
+            var color = pick < .34 ? '#ff2a3d' : pick < .62 ? '#21d4ff' : pick < .80 ? '#7a3cff' : '#ffd9a0';
+            el('rect', { x: x + 5 + c * 9, y: y + 8 + r * 12, width: 4, height: 6, fill: color, opacity: opts.winOpacity * (.6 + rnd() * .4) }, g);
+          }
+        }
+      }
+      x += w + opts.gap * rnd();
+    }
+  }
+
+  skyline(document.getElementById('skylineFar'),  { minW: 50, maxW: 110, minH: 180, maxH: 430, gap: 6, body: '#0a0c26', edgeA: '#21d4ff', edgeB: '#7a3cff', edgeOpacity: .35, lit: .22, winOpacity: .55 });
+  skyline(document.getElementById('skylineNear'), { minW: 60, maxW: 140, minH: 90,  maxH: 300, gap: 14, body: '#05060f', edgeA: '#ff2a3d', edgeB: '#21d4ff', edgeOpacity: .6,  lit: .30, winOpacity: .9 });
+
+  function web(svg, stroke) {
+    var rays = 7, rings = [55, 105, 155, 205, 255];
+    function pt(a, r) { return [Math.cos(a) * r, Math.sin(a) * r]; }
+    for (var i = 0; i < rays; i++) {
+      var a = (i / (rays - 1)) * Math.PI / 2, p = pt(a, 290);
+      el('line', { x1: 0, y1: 0, x2: p[0], y2: p[1], stroke: stroke, 'stroke-width': 1 }, svg);
+    }
+    rings.forEach(function (r) {
+      for (var i = 0; i < rays - 1; i++) {
+        var a1 = (i / (rays - 1)) * Math.PI / 2, a2 = ((i + 1) / (rays - 1)) * Math.PI / 2;
+        var p1 = pt(a1, r), p2 = pt(a2, r), m = pt((a1 + a2) / 2, r * 0.82);
+        el('path', { d: 'M' + p1[0] + ' ' + p1[1] + ' Q' + m[0] + ' ' + m[1] + ' ' + p2[0] + ' ' + p2[1], stroke: stroke, 'stroke-width': 1, fill: 'none' }, svg);
+      }
+    });
+  }
+  web(document.getElementById('webLeft'),  '#21d4ff');
+  web(document.getElementById('webRight'), '#ff2a3d');
+})();
+</script>
+</body>
+</html>
